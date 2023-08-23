@@ -10,12 +10,14 @@ key = requests.utils.unquote('ATvxiuQAY0ACpA1oLNO3Xyi8eXSZuiVs6AAt7tPOpyj4dJ+PGJ
 headerDict = {}
 headerDict.setdefault('Authorization', key)
 
-paramDict = {}
-paramDict.setdefault('serviceKey', key)
-paramDict.setdefault('LAWD_CD', '26260') # 지역코드...
-paramDict.setdefault('DEAL_YMD', '201512') # 계약년월(6자리)
+def getDataFromAPI(region = 11000, ymd = 201512):
+    print("getDataFromAPI")
+    paramDict = {}
+    paramDict.setdefault('serviceKey', key)
+    paramDict.setdefault('LAWD_CD', str(region)) # 지역코드...
+    paramDict.setdefault('DEAL_YMD', str(ymd)) # 계약년월(6자리)
 
-request = requests.get(api_url, params=paramDict, headers=headerDict)
+    return requests.get(api_url, params=paramDict, headers=headerDict)
 
 # content = request.text
 # xml_obj = bs4.BeautifulSoup(content,'lxml-xml')
@@ -23,6 +25,8 @@ request = requests.get(api_url, params=paramDict, headers=headerDict)
 
 # for item in rows:
 #     print(item)
+
+request = getDataFromAPI(26260, 202307)
 
 tree = et.fromstring(request.content)
 et.indent(tree)
@@ -66,6 +70,6 @@ for item in items:
         listOfItems.append(valueList)
         valueList = []
 
-df = pd.DataFrame(listOfItems)
+df = pd.DataFrame(listOfItems, columns=columList)
 
 print(df.head(5))
