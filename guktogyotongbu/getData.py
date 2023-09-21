@@ -6,9 +6,7 @@ import os
 from datetime import datetime
 import addressFinder as address
 
-base_dir = "data"
-file_nm = "data-"+datetime.now().strftime('%Y-%m-%d-%H-%M-%S')+".xlsx"
-xlxs_dir = os.path.join(base_dir, file_nm) 
+
 
 api_url =  'http://openapi.molit.go.kr:8081/OpenAPI_ToolInstallPackage/service/rest/RTMSOBJSvc/getRTMSDataSvcAptTrade'
 
@@ -16,7 +14,8 @@ key = requests.utils.unquote('ATvxiuQAY0ACpA1oLNO3Xyi8eXSZuiVs6AAt7tPOpyj4dJ+PGJ
 
 
 
-columList = ['아파트','거래금액','전용면적','층','법정동','년','월','지번','해제여부']
+columList = ['아파트','거래금액','평','면적','층','법정동','년','월','지번','해제여부']
+columList2 = ['월','평균거래금액']
 
 headerDict = {}
 headerDict.setdefault('Authorization', key)
@@ -46,6 +45,7 @@ def findApartFromData(region, ymd, Dong, Jibun):
             if Jibun == '' or item.find('지번').text.strip() == Jibun:
                 valueList.append(item.find('아파트').text)
                 valueList.append(item.find('거래금액').text.strip())
+                valueList.append(str(round(float(item.find('전용면적').text) * 0.3025)))
                 valueList.append(item.find('전용면적').text)
                 valueList.append(item.find('층').text)
                 valueList.append(item.find('법정동').text.strip())
@@ -77,30 +77,39 @@ def getData(sd = '부산시', sgg = '동래구', umd = '', jibun = '', day1 = 20
     max_Apt = ''
     min_Apt = ''
     avg_price = 0
-
+    month_avg = 0
+    scale_avg = []
+    print(["start: ",day1,"end: ",day2])
     print("try getDataInGap")
     result = getDataInGap(address.local(sd, sgg), Dong = umd, Jibun=jibun, start=day1, end=day2)
     dataResult = []
+    graphData = []
     for item in result:
         for i in item:
             price = int(i[1].replace(',',''))
             if price > max_price:
                 max_price = price
-                max_Apt = i[4] + ', ' + i[0] + ', ' + i[2] + 'm²'
+                max_Apt = i[5] + ', ' + i[0] + ', ' + i[2] + '평'
             if price < min_price:
                 min_price = price
-                min_Apt = i[4] + ', ' + i[0] + ', ' + i[2] + 'm²'
+                min_Apt = i[5] + ', ' + i[0] + ', ' + i[2] + '평'
             avg_price += price
-
+            month_avg += price
             dataResult.append(i)
+        graphData.append([item[0][-4][2:]+'.'+item[0][-3], month_avg/len(item)])
+        month_avg = 0
     avg_price /= len(dataResult)
-    dataResult.append(['최고가', max_Apt, max_price, '최저가', min_Apt, min_price, '평균가', avg_price])
+    print(['최고가', max_Apt, str(max_price)+'만원', '최저가', min_Apt, str(min_price)+'만원', '평균가', avg_price])
     print("getDataInGap success")
     df = pd.DataFrame(dataResult, columns=columList)
+    graphdf = pd.DataFrame(graphData, columns=columList2)
     print("DataFrame success")
-    return df
+    return df, graphdf
 
-def makeExcel(dataFrame):
+def makeExcel(dataFrame, filename = 'data'):
+    base_dir = "data"
+    file_nm = filename+"-"+datetime.now().strftime('%Y-%m-%d-%H-%M-%S')+".xlsx"
+    xlxs_dir = os.path.join(base_dir, file_nm) 
     dataFrame.to_excel(xlxs_dir)
     print("Excel success")
 
@@ -115,15 +124,16 @@ def getDatabyMonth(sd = '부산시', sgg = '동래구', umd = '', jibun = '', da
 
 def getDatabyOnlyMonth(sd = '부산시', sgg = '동래구', umd = '', jibun = '', month = 12):
     day = int(datetime.now().strftime('%Y%m'))
+    daya = day
     num = month-1
     if num >= 12:
         y = int(num / 12)
         num %= 12
         num += y*100
-    if num%100 > day%100:
-        day -= 100
-        day += 12
-    st = day - num
+    if num%100 > daya%100:
+        daya -= 100
+        daya += 12
+    st = daya - num
     if st%100 == 0:
         st -= 100
         st += 12

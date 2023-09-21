@@ -9,7 +9,7 @@ search_key = requests.utils.unquote("devU01TX0FVVEgyMDIzMDgyMjA5MzU0MTExNDAzODA=
 def local(sido, gungu):
     paramDict = {}
     paramDict.setdefault('confmKey', search_key)
-    paramDict.setdefault('keyword', sido+gungu) # '서울시송파구'
+    paramDict.setdefault('keyword', sido+' '+gungu) # '서울시송파구'
     requestData = requests.get(api_url, params=paramDict)
 
     tree = et.fromstring(requestData.content)
